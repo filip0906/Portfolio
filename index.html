@@ -12,7 +12,8 @@
 <title>Filip Marić</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Newsreader:ital,opsz,wght@1,6..72,300..500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Newsreader:ital,wght@1,300..500&family=IBM+Plex+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Newsreader:ital,wght@1,300..500&family=IBM+Plex+Mono:wght@400;500&display=swap"></noscript>
 <style>
 /* ============ DESIGN SYSTEM ============
    Graphite  #131211  base
@@ -95,7 +96,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .hero-bottom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,34rem);gap:32px;align-items:end}
 .hero-left{display:flex;flex-direction:column;gap:10px}
 .statement{margin:0;font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:clamp(1.5rem,2.5vw,2.35rem);line-height:1.16;text-wrap:balance}
-.hint{color:var(--dim)}
+.hint{color:var(--ash)}
 
 /* ============ SECTIONS ============ */
 .section{padding-block:var(--sec)}
@@ -258,9 +259,9 @@ html.has-cursor .cursor-dot,html.has-cursor .cursor-ring{display:grid}
 @supports (animation-timeline: view()){
   @media (prefers-reduced-motion: no-preference){
     .lit{animation:lit linear both;animation-timeline:view();animation-range:cover 12% cover 38%}
-    @keyframes lit{from{color:var(--dim)}to{color:var(--bone)}}
+    @keyframes lit{from{color:var(--ash)}to{color:var(--bone)}}
     .reveal{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 55%}
-    @keyframes rise{from{opacity:.1;transform:translateY(36px)}to{opacity:1;transform:none}}
+    @keyframes rise{from{transform:translateY(36px)}to{transform:none}}
   }
 }
 
@@ -305,7 +306,7 @@ html.has-cursor .cursor-dot,html.has-cursor .cursor-ring{display:grid}
     <a class="mono" href="#contact" data-i18n="nav.contact">Kontakt</a>
   </nav>
   <div class="lang mono" role="group" aria-label="Jezik / Language">
-    <button type="button" data-lang="hr" aria-pressed="true">HR</button><span>/</span><button type="button" data-lang="en" aria-pressed="false">EN</button>
+    <button type="button" data-lang="hr" aria-pressed="true">HR</button><span aria-hidden="true">/</span><button type="button" data-lang="en" aria-pressed="false">EN</button>
   </div>
   <button type="button" class="menu-btn mono" id="menuBtn" aria-expanded="false" aria-controls="menu" data-i18n="nav.menu">Izbornik</button>
 </header>
@@ -570,8 +571,8 @@ function renderAboutTitle(){
 }
 function projLinks(p, t){
   const out = [];
-  if(p.live) out.push(`<a class="plink mono" href="${esc(p.live)}" target="_blank" rel="noopener">${t['work.live']} ↗</a>`);
-  if(p.repo) out.push(`<a class="plink mono" href="${esc(p.repo)}" target="_blank" rel="noopener">${t['work.code']} ↗</a>`);
+  if(p.live) out.push(`<a class="plink mono" href="${esc(p.live)}" target="_blank" rel="noopener" aria-label="${esc(p.name)}: ${t['work.live']}">${t['work.live']} ↗</a>`);
+  if(p.repo) out.push(`<a class="plink mono" href="${esc(p.repo)}" target="_blank" rel="noopener" aria-label="${esc(p.name)}: ${t['work.code']} (GitHub)">${t['work.code']} ↗</a>`);
   return out.length ? `<div class="plinks">${out.join('')}</div>` : '';
 }
 function renderWork(){
@@ -715,16 +716,17 @@ document.addEventListener('pointerover', e=>{
 });
 document.addEventListener('pointerleave', ()=>{ ring.classList.remove('label','hot'); });
 
-/* magnetic */
+/* magnetic: read every rect first, then write, so the browser lays out once */
 if(hasCursor && !reduced){
   document.addEventListener('pointermove', e=>{
-    document.querySelectorAll('[data-magnetic]').forEach(el=>{
+    const els = [...document.querySelectorAll('[data-magnetic]')];
+    const moves = els.map(el=>{
       const r = el.getBoundingClientRect();
-      const cx = r.left + r.width/2, cy = r.top + r.height/2;
-      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
       const within = Math.abs(dx) < r.width/2 + 40 && Math.abs(dy) < r.height/2 + 40;
-      el.style.transform = within ? `translate(${dx*0.28}px, ${dy*0.38}px)` : '';
+      return within ? `translate(${dx*0.28}px, ${dy*0.38}px)` : '';
     });
+    els.forEach((el,i)=>{ if(el.style.transform !== moves[i]) el.style.transform = moves[i]; });
   }, {passive:true});
 }
 
@@ -736,9 +738,22 @@ const chars = [...nameEl.querySelectorAll('.ch')];
 const mqMobile = matchMedia('(max-width:760px)');
 const P = ()=> mqMobile.matches ? {bw:280,mw:820,bd:70,md:98} : {bw:250,mw:860,bd:100,md:125};
 const state = chars.map(()=>({w:100,d:62}));
-let inHero = false, heroVisible = true, fs = parseFloat(getComputedStyle(nameEl).fontSize);
-window.addEventListener('resize', ()=>{ fs = parseFloat(getComputedStyle(nameEl).fontSize); updateRail(); });
-hero.addEventListener('pointerenter', e=>{ if(e.pointerType==='mouse') inHero=true; });
+let inHero = false, heroVisible = true, fs = 100;
+/* Layout is measured here, outside the animation loop, in page coordinates */
+let centers = [], heroBox = {left:0,top:0,width:0,height:0}, spotSize = 0;
+function measure(){
+  const sx = window.scrollX, sy = window.scrollY;
+  fs = parseFloat(getComputedStyle(nameEl).fontSize);
+  centers = chars.map(c=>{ const r = c.getBoundingClientRect(); return {x:r.left + r.width/2 + sx, y:r.top + r.height/2 + sy}; });
+  const hr = hero.getBoundingClientRect();
+  heroBox = {left:hr.left + sx, top:hr.top + sy, width:hr.width, height:hr.height};
+  spotSize = spot.offsetWidth;
+}
+measure();
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+window.addEventListener('load', measure);
+window.addEventListener('resize', ()=>{ measure(); updateRail(); });
+hero.addEventListener('pointerenter', e=>{ if(e.pointerType==='mouse'){ inHero=true; measure(); } });
 hero.addEventListener('pointerleave', ()=>{ inHero=false; });
 new IntersectionObserver(([en])=>{ heroVisible = en.isIntersecting; }).observe(hero);
 const spotPos = {x:0,y:0};
@@ -753,13 +768,12 @@ function frame(t){
   /* hero lens */
   if(heroVisible){
     const p = P();
-    const rects = chars.map(c=>c.getBoundingClientRect());
     const R = fs * 0.95;
+    const px = mouse.x + window.scrollX, py = mouse.y + window.scrollY;
     for(let i=0;i<chars.length;i++){
       let inf;
-      if(inHero){
-        const r = rects[i];
-        const dx = mouse.x - (r.left + r.width/2), dy = mouse.y - (r.top + r.height/2);
+      if(inHero && centers[i]){
+        const dx = px - centers[i].x, dy = py - centers[i].y;
         inf = Math.exp(-(dx*dx+dy*dy)/(R*R));
       }else{
         const s = 0.5 + 0.5*Math.sin(t/1100 - i*0.62);
@@ -770,11 +784,10 @@ function frame(t){
       s.d += (p.bd + (p.md-p.bd)*inf - s.d) * 0.1;
       chars[i].style.fontVariationSettings = `"wght" ${s.w.toFixed(0)}, "wdth" ${s.d.toFixed(1)}`;
     }
-    const hr = hero.getBoundingClientRect();
-    const size = spot.offsetWidth;
+    const hb = heroBox, size = spotSize;
     let tx, ty;
-    if(inHero){ tx = mouse.x - hr.left - size/2; ty = mouse.y - hr.top - size/2; }
-    else { tx = hr.width*(0.5+0.32*Math.sin(t/4200)) - size/2; ty = hr.height*(0.45+0.2*Math.cos(t/5300)) - size/2; }
+    if(inHero){ tx = px - hb.left - size/2; ty = py - hb.top - size/2; }
+    else { tx = hb.width*(0.5+0.32*Math.sin(t/4200)) - size/2; ty = hb.height*(0.45+0.2*Math.cos(t/5300)) - size/2; }
     spotPos.x += (tx - spotPos.x)*0.06; spotPos.y += (ty - spotPos.y)*0.06;
     spot.style.transform = `translate3d(${spotPos.x.toFixed(1)}px, ${spotPos.y.toFixed(1)}px, 0)`;
   }
